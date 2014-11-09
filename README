@@ -1,0 +1,42 @@
+
+The premise of the Restore application is this:
+	People often say you need to have backups. But that is not the end goal.
+	The end goal is to be able to restore your data when needed.
+	So we have an application focused on that goal.
+
+The aim of this program is to make backups of personal files more efficient
+by realising an important point - a lot of personal data is re-creatable.
+Some simple examples:
+	Programs, libraries and other package-manager provided files can be re-downloaded.
+	A digitally distributed game can be re-downloaded, but its saves cannot.
+	A conversion of a file from one format to another can be re-applied.
+	Files in source control can be recovered from the repository data.
+
+The program works by taking a list of files and attempting to associate them with handlers.
+Handlers have a priority and a match rule, allowing for automatic allocation of files to handlers.
+
+Both directories and regular files can have handlers. If a directory is handled, files inside it
+generally don't need to be (but may). This is implemented by having a high-priority handler for files
+whose directories have a non-trivial handler.
+
+Although handler allocation is automatic, it is a seperate user-initiated step.
+This is because the user can also manually edit the list of handler assignments.
+
+Finally, the restore service requires a backing store to store handler metadata, which
+in the worst case is simply the entire data of the file. In this regard the backing store
+is similar to a traditional backup service.
+
+In summary, backing up a collection of files might look like this:
+	Automatically allocate handlers
+	Manually edit allocation list
+	Initiate backup
+
+An example of some handlers:
+	Package manager handler:
+		match on: file is reported as owned by a package by the manager, and isn't modified
+		store: package name as metadata
+		on restore: install package
+	File conversion handler:
+		match on: probably nothing, or possibly specific cases like "same name, different extension from this set"
+		store: source file path, conversion command
+		on restore: wait for source file handler, then run command
