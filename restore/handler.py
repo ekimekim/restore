@@ -1,4 +1,10 @@
 
+import os
+import pwd
+import grp
+from stat import S_IMODE
+
+from classtricks import get_all_subclasses
 
 
 class Handler(object):
@@ -84,7 +90,7 @@ class SavesFileInfo(Handler):
 		stat = os.stat(self.filepath)
 		if S_IMODE(stat.st_mode) != extra_data['mode']:
 			os.chmod(self.filepath, extra_data['mode'])
-		uid = stat.st_uid if extra_data['owner'] is None else uid = pwd.getpwnam(extra_data['owner'])
-		gid = stat.st_gid if extra_data['group'] is None else gid = grp.getgrnam(extra_data['group'])
+		uid = stat.st_uid if extra_data['owner'] is None else pwd.getpwnam(extra_data['owner'])
+		gid = stat.st_gid if extra_data['group'] is None else grp.getgrnam(extra_data['group'])
 		if uid != stat.st_uid or gid != stat.st_gid:
 			os.chown(self.filepath, uid, gid)
