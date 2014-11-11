@@ -17,7 +17,7 @@ class Manifest(object):
 		for path, handler in data.items():
 			name = handler['name']
 			handler_data = handler['data']
-			handler = Handler.from_name(name)(path, **handler_data)
+			handler = Handler.from_name(name)(self, path, **handler_data)
 			self.add_file(path, handler)
 
 	def add_file_tree(self, root):

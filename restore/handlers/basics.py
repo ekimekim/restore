@@ -10,10 +10,10 @@ class BasicDirectoryHandler(SavesFileInfo):
 	name = 'basic-directory'
 
 	@classmethod
-	def match(cls, filepath):
+	def match(cls, manifest, filepath):
 		# match all directories
 		if os.path.isdir(filepath):
-			return cls(filepath)
+			return (), {}
 
 	def restore(self, extra_data):
 		os.mkdir(self.filepath)

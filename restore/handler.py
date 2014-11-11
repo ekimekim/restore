@@ -2,6 +2,7 @@
 import os
 import pwd
 import grp
+import weakref
 from stat import S_IMODE
 
 from classtricks import get_all_subclasses
@@ -32,15 +33,18 @@ class Handler(object):
 		raise KeyError(name)
 
 	@classmethod
-	def match(cls, filepath):
+	def match(cls, manifest, filepath):
 		"""Investigate file and establish if this handler should apply.
-		Return None to reject, or an instance of cls.
+		Return None to reject, or (args, kwargs) to pass to the handler's constructor.
 		Defaults to not matching anything.
 		"""
 		return None
 
-	def __init__(self, filepath):
+	def __init__(self, manifest, filepath):
 		self.filepath = filepath
+		# we use a weakref for manifest to break the circular reference, and handlers shouldn't be
+		# called once the manifest object is dead anyway.
+		self.manifest = weakref.proxy(manifest)
 
 	def get_args(self):
 		"""Return the arguments that, if passed to __init__, would re-create an identical handler.
