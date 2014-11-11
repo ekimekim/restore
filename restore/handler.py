@@ -61,9 +61,7 @@ class Handler(object):
 		return {}
 
 	def restore(self, extra_data):
-		"""Restore the target file from given saved data.
-		If the file happens to already be present, it should not be overridden - raise an error
-		and let the user resolve the conflict."""
+		"""Restore the target file from given saved data."""
 		raise NotImplementedError
 
 
