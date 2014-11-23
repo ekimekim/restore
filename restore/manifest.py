@@ -3,7 +3,7 @@ import os
 
 import simplejson as json
 
-from handlers import Handler
+from handler import Handler
 from handlers import DEFAULT_HANDLERS
 
 
@@ -24,7 +24,8 @@ class Manifest(object):
 			self.add_file(path, overwrite=False)
 
 	def add_file(self, path, handler=None, overwrite=True):
-		self.files[path] = handler
+		if overwrite or path not in self.files:
+			self.files[path] = handler
 
 	def dump(self):
 		"""Returns the string data representing the on-disk format.
@@ -70,8 +71,9 @@ class Manifest(object):
 
 	def savefile(self, filepath):
 		"""Save manifest to a file"""
+		s = self.dump()
 		with open(filepath, 'w') as f:
-			f.write(self.dump())
+			f.write(s)
 
 	def loadfile(self, filepath):
 		"""Load data from file and add it to manifest"""

@@ -10,8 +10,8 @@ FIRST_HANDLERS = [
 
 LAST_HANDLERS = [
 	basics.SymbolicLinkHandler,
-	basics.DirectoryHandler,
-	basics.FileHandler,
+	basics.BasicDirectoryHandler,
+	basics.BasicFileHandler,
 ]
 
 DEFAULT_HANDLERS = [

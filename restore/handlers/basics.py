@@ -1,7 +1,7 @@
 
 import os
 
-from restore import SavesFileInfo, Handler
+from restore.handler import SavesFileInfo, Handler
 
 
 class BasicDirectoryHandler(SavesFileInfo):
