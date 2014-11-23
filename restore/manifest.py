@@ -3,7 +3,8 @@ import os
 
 import simplejson as json
 
-from handler import Handler
+from handlers import Handler
+from handlers import DEFAULT_HANDLERS
 
 
 class Manifest(object):
@@ -77,3 +78,14 @@ class Manifest(object):
 		with open(filepath) as f:
 			self.load(f.read())
 
+	def find_matches(self, handlers=DEFAULT_HANDLERS):
+		"""Search handler classes for matches for files.
+		Order in the handlers list determines priority."""
+		for path in sorted(self.files):
+			if self.files[path]: continue # only look for unhandled files
+			for cls in handlers:
+				match = cls.match(self, path)
+				if not match: continue
+				args, kwargs = match
+				self.files[path] = cls(self, path, *args, **kwargs)
+				break
