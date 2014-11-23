@@ -19,7 +19,7 @@ class Manifest(object):
 		"""Load files and folders recursively, if not already loaded"""
 		for path, dirs, files in os.walk(root):
 			for filename in files:
-				self.add_file(filename, overwrite=False)
+				self.add_file(os.path.join(path, filename), overwrite=False)
 			self.add_file(path, overwrite=False)
 
 	def add_file(self, path, handler=None, overwrite=True):
