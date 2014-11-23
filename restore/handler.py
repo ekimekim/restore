@@ -19,7 +19,7 @@ class Handler(object):
 
 	Data stored by a handler falls into two categories:
 		arguments, which are passed into init, and are user-facing. These should be human-readable
-			and small.
+			and small. When passed to init, may be in string form (eg. "0" instead of 0).
 		extra data, which is gathered at backup time. These can be as large as you like.
 	"""
 
@@ -49,7 +49,8 @@ class Handler(object):
 	def get_args(self):
 		"""Return the arguments that, if passed to __init__, would re-create an identical handler.
 		Format is (args, kwargs). Note that this may be used for display, so use your judgement
-		on what should be args and what should be kwargs."""
+		on what should be args and what should be kwargs.
+		Note that all args will be converted to string."""
 		return (), {}
 
 	def get_extra_data(self):

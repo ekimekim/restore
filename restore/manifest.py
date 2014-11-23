@@ -1,24 +1,19 @@
 
+import os
 
 import simplejson as json
+
+from handler import Handler
 
 
 class Manifest(object):
 	"""A Manifest contains the list of files and their associated handlers."""
 
-	def __init__(self):
+	def __init__(self, filepath=None):
+		"""Filepath arg provides a shortcut to load a manifest from a file"""
 		self.files = {}
-
-	def load(self, filepath):
-		"""Load manifest from file, overwriting anything already present"""
-		with open(filepath) as f:
-			data = f.read()
-		data = json.loads(data)
-		for path, handler in data.items():
-			name = handler['name']
-			handler_data = handler['data']
-			handler = Handler.from_name(name)(self, path, **handler_data)
-			self.add_file(path, handler)
+		if filepath:
+			self.loadfile(filepath)
 
 	def add_file_tree(self, root):
 		"""Load files and folders recursively, if not already loaded"""
@@ -30,9 +25,55 @@ class Manifest(object):
 	def add_file(self, path, handler=None, overwrite=True):
 		self.files[path] = handler
 
-	def save(self, filepath):
-		data = {path: (handler if handler is None else dict(name=handler.name, data=handler.get_data()))
-		        for path, handler in self.files}
-		data = json.dumps(data)
+	def dump(self):
+		"""Returns the string data representing the on-disk format.
+		On-disk format is one line per handler as follows:
+			"{path!r}\t{handler_name}\t{args}"
+		where args are a comma-seperated list of either positional args
+		or key=value args. All args are strings. Internal whitespace is preserved but leading
+		and trailing whitespace is not. eg. "hello world , foo =bar" would resolve to:
+			("hello world",), {"foo": "bar"}
+		If no handler is set, the name 'none' is used.
+		The purpose of this format is to be easily hand-editable.
+		"""
+		output = ''
+		for path, handler in sorted(self.files.items()):
+			if handler:
+				args, kwargs = handler.get_args()
+				argstr = ", ".join(map(str, args) + ["{}={}".format(k, v) for k, v in kwargs.items()])
+				name = handler.name
+			else:
+				name, argstr = 'none', ''
+			output += "{}\t{}\t{}\n".format(json.dumps(path), name, argstr)
+		return output
+
+	def load(self, data, overwrite=True):
+		"""Takes the string data for the on-disk format and loads it into the object.
+		See dump() for a description of the on-disk format."""
+		for line in filter(None, data.split('\n')):
+			path, name, args = line.split('\t')
+			path = json.loads(path)
+			args = args.split(',')
+			posargs, kwargs = [], {}
+			for arg in args:
+				if '=' in args:
+					k, v = args.split('=', 1)
+					kwargs[k.strip()] = v.strip()
+				else:
+					posargs.append(arg.split())
+			if name == 'none':
+				handler = None
+			else:
+				handler = Handler.from_name(name)(self, path, *posargs, **kwargs)
+			self.add_file(path, handler, overwrite=overwrite)
+
+	def savefile(self, filepath):
+		"""Save manifest to a file"""
 		with open(filepath, 'w') as f:
-			f.write(data)
+			f.write(self.dump())
+
+	def loadfile(self, filepath):
+		"""Load data from file and add it to manifest"""
+		with open(filepath) as f:
+			self.load(f.read())
+
