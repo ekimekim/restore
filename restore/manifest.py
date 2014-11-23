@@ -55,7 +55,7 @@ class Manifest(object):
 		for line in filter(None, data.split('\n')):
 			path, name, args = line.split('\t')
 			path = json.loads(path)
-			args = args.split(',')
+			args = filter(None, args.split(','))
 			posargs, kwargs = [], {}
 			for arg in args:
 				if '=' in args:
