@@ -53,8 +53,12 @@ class Manifest(object):
 		"""Takes the string data for the on-disk format and loads it into the object.
 		See dump() for a description of the on-disk format."""
 		for line in filter(None, data.split('\n')):
-			path, name, args = line.split('\t')
+			parts = line.split('\t')
+			parts = list(parts) + [''] * max(3 - len(parts), 0) # pad to length 3 with ''
+			path, name, args = parts[:3]
+
 			path = json.loads(path)
+
 			args = filter(None, args.split(','))
 			posargs, kwargs = [], {}
 			for arg in args:
@@ -63,10 +67,12 @@ class Manifest(object):
 					kwargs[k.strip()] = v.strip()
 				else:
 					posargs.append(arg.split())
-			if name == 'none':
+
+			if name == 'none' or not name:
 				handler = None
 			else:
 				handler = Handler.from_name(name)(self, path, *posargs, **kwargs)
+
 			self.add_file(path, handler, overwrite=overwrite)
 
 	def savefile(self, filepath):
