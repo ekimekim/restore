@@ -91,3 +91,23 @@ class Manifest(object):
 				args, kwargs = match
 				self.files[path] = cls(self, path, *args, **kwargs)
 				break
+
+
+class edit_manifest(object):
+	"""Helper context manager to load a manifest from disk, modify it, and save it if there's no errors.
+	On enter, returns a manifest object loaded from the passed in filename.
+	On exit without errors, saves the manifest object under the same filename.
+
+	This context manager is re-usable but NOT re-enterant.
+	"""
+
+	def __init__(self, filepath):
+		self.filepath = filepath
+
+	def __enter__(self):
+		self.manifest = Manifest(self.filepath)
+		return self.manifest
+
+	def __exit__(self, *exc_info):
+		if exc_info == (None, None, None):
+			self.manifest.savefile(self.filepath)

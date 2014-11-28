@@ -3,7 +3,7 @@ import os
 
 import argh
 
-from manifest import Manifest
+from manifest import Manifest, edit_manifest
 
 
 cli = argh.EntryPoint("restore")
@@ -20,20 +20,16 @@ def add(manifest, *path, **kwargs):
 @cli
 def prune(manifest):
 	"""Remove files from manifest that no longer exist"""
-	manifest_path = manifest
-	manifest = Manifest(manifest_path)
-	for path in manifest.files.keys():
-		if not os.path.exists(path):
-			del manifest.files[path]
-	manifest.savefile(manifest_path)
+	with edit_manifest(manifest) as m:
+		for path in m.files.keys():
+			if not os.path.exists(path):
+				del m.files[path]
 
 @cli
 def match(manifest):
 	"""Automatically find matching handlers for all unhandled files in manifest"""
-	manifest_path = manifest
-	manifest = Manifest(manifest_path)
-	manifest.find_matches()
-	manifest.savefile(manifest_path)
+	with edit_manifest(manifest) as m:
+		m.find_matches()
 
 
 if __name__ == '__main__':
