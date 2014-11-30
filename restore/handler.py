@@ -21,6 +21,10 @@ class Handler(object):
 		arguments, which are passed into init, and are user-facing. These should be human-readable
 			and small. When passed to init, may be in string form (eg. "0" instead of 0).
 		extra data, which is gathered at backup time. These can be as large as you like.
+
+	If a restore handler depends on another file being restored first (for example, if it uses the contents of that
+	file to re-constitute the target file), it should return that filepath in get_depends().
+	Note that filepaths outside the scope of the manifest are assumed to be already present.
 	"""
 
 	name = NotImplemented
@@ -60,6 +64,13 @@ class Handler(object):
 		Returned data should be a dict {key: data}.
 		"""
 		return {}
+
+	def get_depends(self):
+		"""Return a set of paths that must be fully restored before this restore action can occur.
+		Don't forget to include super()'s results too.
+		A handler will always depend on its parent directory.
+		"""
+		return {os.path.dirname(self.filepath)}
 
 	def restore(self, extra_data):
 		"""Restore the target file from given saved data."""

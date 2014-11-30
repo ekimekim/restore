@@ -40,3 +40,16 @@ An example of some handlers:
 		match on: probably nothing, or possibly specific cases like "same name, different extension from this set"
 		store: source file path, conversion command
 		on restore: wait for source file handler, then run command
+
+The archive format:
+	The archive is a tar archive containing the files:
+		./manifest # a copy of the manifest being saved, allowing us to map paths to handlers during restoration
+		./data/PATH/ # note that this is a directory, even if the file saved is not
+		./data/PATH/KEY # for each key in PATH's extra_data, a file exists containing the value
+		...
+	To save space, ./data/PATH/ may be omitted if no extra_data is present for that PATH.
+	Motivations:
+		The use of a tar archive allows the data to remain recognisable by both manual inspection and sniffing
+		tools should problems occur.
+		A secondary motivation is that the tar format allows easy stream-based construction compared to, say,
+		JSON, which (for most libraries) must be constructed entirely in memory before being written out.

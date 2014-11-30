@@ -3,6 +3,10 @@ import os
 
 import simplejson as json
 
+from gevent.event import Event
+
+import gtools
+
 from handler import Handler
 from handlers import DEFAULT_HANDLERS
 
@@ -108,6 +112,35 @@ class Manifest(object):
 				args, kwargs = match
 				self.files[path] = cls(self, path, *args, **kwargs)
 				break
+
+	def restore(self, archive, path):
+		"""Restore target path from given archive. Note this assumes the path's dependencies are already
+		correct."""
+		extra_data = archive.get_extra_data(path)
+		handler = self.files[path]
+		if handler:
+			handler.restore(extra_data)
+
+	def restore_all(self, archive):
+		"""Restore all files in manifest, using given archive.
+		NOTE: Unexpected results may happen if archive was not constructed using the exact same manifest.
+		Generally, you should call archive.restore() instead, as this will force it to use the manifest
+		from the archive itself.
+		"""
+		restored = {path: Event() for path in self.files}
+
+		def wait_and_restore(path):
+			handler = self.files[path]
+			if not handler:
+				return
+			for dependency in handler.get_depends():
+				dependency = os.path.normpath(dependency)
+				if dependency in restored:
+					restored[dependency].wait()
+			self.restore(archive, path)
+			restored[path].set()
+
+		gtools.gmap(wait_and_restore, self.files)
 
 
 class edit_manifest(object):
