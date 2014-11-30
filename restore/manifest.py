@@ -8,11 +8,15 @@ from handlers import DEFAULT_HANDLERS
 
 
 class Manifest(object):
-	"""A Manifest contains the list of files and their associated handlers."""
+	"""A Manifest contains the list of files and their associated handlers.
+	Manifests can contain absolute or relative paths, but not both.
+	If unspecified, a manifest will adopt the absolute/relative mode depending on the first added path.
+	"""
 
-	def __init__(self, filepath=None):
+	def __init__(self, filepath=None, absolute=None):
 		"""Filepath arg provides a shortcut to load a manifest from a file"""
 		self.files = {}
+		self.absolute = absolute
 		if filepath:
 			self.loadfile(filepath)
 
@@ -24,6 +28,13 @@ class Manifest(object):
 			self.add_file(path, overwrite=False)
 
 	def add_file(self, path, handler=None, overwrite=True):
+		if self.absolute is None:
+			self.absolute = path.startswith('/')
+		if self.absolute:
+			path = os.path.abspath(path)
+		elif path.startswith('/'):
+			raise ValueError("Cannot add absolute path to relative path manifest")
+		path = os.path.normpath(path)
 		if overwrite or path not in self.files:
 			self.files[path] = handler
 
