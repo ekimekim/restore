@@ -81,7 +81,7 @@ class Manifest(object):
 					k, v = args.split('=', 1)
 					kwargs[k.strip()] = v.strip()
 				else:
-					posargs.append(arg.split())
+					posargs.append(arg.strip())
 
 			if name == 'none' or not name:
 				handler = None
