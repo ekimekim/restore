@@ -1,6 +1,7 @@
 
 import basics
 import packages
+import example
 
 # first and last handlers that should always be in those positions to ensure proper operation
 # these cover things like restoring whole directories and fallback "just back up the file" stuff
