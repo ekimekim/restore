@@ -35,7 +35,6 @@ def prune(manifest):
 @argh.arg('--no-common', help='Disable the common handlers that provide basic default functionality')
 def match(manifest, no_common=False, *handlers):
 	"""Automatically find matching handlers for all unhandled files in manifest"""
-	print handlers
 	try:
 		handlers = [Handler.from_name(name) for name in handlers]
 	except KeyError as ex:
