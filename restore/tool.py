@@ -1,11 +1,13 @@
 
 import os
+import sys
 
 import argh
 
 from restore.manifest import Manifest, edit_manifest
 from restore.handlers import _DEFAULT_HANDLERS, FIRST_HANDLERS, LAST_HANDLERS
 from restore.handler import Handler
+from restore.archive import Archive
 
 
 cli = argh.EntryPoint("restore")
@@ -63,6 +65,25 @@ def list_handlers(quiet=False):
 		if handler in _DEFAULT_HANDLERS:
 			description = '(default) ' + description
 		print "{}: {}".format(handler.name, description)
+
+@cli
+def restore(archive):
+	"""Restore all contents of the given archive. WARNING: May overwrite existing files."""
+	archive_path = archive
+	archive = Archive.from_file(archive_path)
+	archive.restore()
+
+@cli
+@argh.arg('--compress', choices=['gz', 'bz2', 'none'], help='Compression algorithm to use for the archive')
+def archive(manifest, archive, compress='gz'):
+	"""Store backup info for manifest into an archive, which can be used to later restore the data.
+	If archive path is '-', output to stdout.
+	"""
+	manifest = Manifest(manifest)
+	fileobj = sys.stdout if archive == '-' else open(archive, 'w')
+	if compress == 'none':
+		compress = None
+	manifest.archive(fileobj, compress=compress)
 
 if __name__ == '__main__':
 	cli()

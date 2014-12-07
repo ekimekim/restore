@@ -142,6 +142,16 @@ class Manifest(object):
 
 		gtools.gmap(wait_and_restore, self.files)
 
+	def archive(self, fileobj, compress='gz'):
+		"""Write archive to given fileobj (common use cases include a file on disk, a pipe to a storage service).
+		The archive contains all the info needed for a later restore operation, including the manifest itself.
+		compress enables compression on the output archive and may be one of "gz", "bz2" or None.
+		"""
+		# late import breaks cyclic dependency
+		from archive import Archive
+		archive = Archive(fileobj, 'w', compress=compress)
+		archive.add_manifest(self)
+
 
 class edit_manifest(object):
 	"""Helper context manager to load a manifest from disk, modify it, and save it if there's no errors.
