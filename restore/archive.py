@@ -70,7 +70,7 @@ class Archive(object):
 		data = {}
 		# scan for path/KEY files
 		for name in self.get_names():
-			if name == path or not name.startswith(path):
+			if os.path.dirname(name) != path:
 				continue
 			if not self.tar.getmember(name).isfile():
 				continue
@@ -107,6 +107,7 @@ class Archive(object):
 		if self._names is None:
 			self._names = set()
 		self.mkdir(os.path.dirname(path))
+		value = str(value)
 
 		pseudofile = StringIO(value)
 		tarinfo = self.build_tarinfo(path, size=len(value))

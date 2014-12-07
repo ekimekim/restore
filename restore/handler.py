@@ -107,9 +107,10 @@ class SavesFileInfo(Handler):
 
 	def restore(self, extra_data):
 		stat = os.stat(self.filepath)
-		if S_IMODE(stat.st_mode) != extra_data['mode']:
-			os.chmod(self.filepath, extra_data['mode'])
-		uid = stat.st_uid if extra_data['owner'] is None else pwd.getpwnam(extra_data['owner'])
-		gid = stat.st_gid if extra_data['group'] is None else grp.getgrnam(extra_data['group'])
+		mode = int(extra_data['mode'])
+		if S_IMODE(stat.st_mode) != mode:
+			os.chmod(self.filepath, mode)
+		uid = stat.st_uid if extra_data['owner'] is None else pwd.getpwnam(extra_data['owner']).pw_uid
+		gid = stat.st_gid if extra_data['group'] is None else grp.getgrnam(extra_data['group']).gr_gid
 		if uid != stat.st_uid or gid != stat.st_gid:
 			os.chown(self.filepath, uid, gid)

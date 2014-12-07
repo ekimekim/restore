@@ -16,7 +16,8 @@ class BasicDirectoryHandler(SavesFileInfo):
 			return (), {}
 
 	def restore(self, extra_data):
-		os.mkdir(self.filepath)
+		if not os.path.isdir(self.filepath):
+			os.mkdir(self.filepath)
 		super(BasicDirectoryHandler, self).restore(extra_data)
 
 
