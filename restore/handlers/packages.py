@@ -105,6 +105,8 @@ class PackageHandler(Handler):
 class PacmanHandler(PackageHandler):
 	"""Package handler for archlinux's pacman package manager"""
 
+	name = 'pacman'
+
 	@classmethod
 	def index_packages(cls):
 		data = subprocess.check_output(['pacman', '-Ql'])

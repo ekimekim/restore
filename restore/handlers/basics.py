@@ -61,8 +61,7 @@ class SymbolicLinkHandler(Handler):
 
 
 class HandledByParent(Handler):
-	"""A special handler that indicates the file will be restored in the process of restoring its parent
-	directory.
+	"""A special handler that indicates the file will be restored in the process of restoring its parent directory.
 	To facilitate auto-matching, handlers can implement an attribute restores_contents = True.
 	Any handler with this attribute will cause all subfiles to match to this handler.
 	"""

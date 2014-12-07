@@ -6,8 +6,8 @@ from restore.handler import Handler
 
 
 class ExampleHandler(Handler):
-	"""This handler DOES NOT RESTORE YOUR FILE.
-	It is merely an example handler for demonstration and testing purposes.
+	"""An example handler for demonstration and testing purposes.
+	This handler DOES NOT RESTORE YOUR FILE.
 	In fact, it completely ignores the target file, instead storing some random values,
 	and printing them on "restore".
 	The two random values are designated "arg" and "data" and serve to demonstrate the difference

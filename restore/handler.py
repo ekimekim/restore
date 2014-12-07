@@ -31,10 +31,15 @@ class Handler(object):
 
 	@classmethod
 	def from_name(cls, name):
-		for subcls in get_all_subclasses(cls):
+		for subcls in cls.get_all():
 			if subcls.name == name:
 				return subcls
 		raise KeyError(name)
+
+	@classmethod
+	def get_all(cls):
+		"""Return a list of all "real" handlers, ie. Handler subclasses where name is implemented."""
+		return set(subcls for subcls in get_all_subclasses(cls) if subcls.name != NotImplemented)
 
 	@classmethod
 	def match(cls, manifest, filepath):
