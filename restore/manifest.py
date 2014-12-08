@@ -65,7 +65,7 @@ class Manifest(object):
 				name = handler.name
 			else:
 				name, argstr = 'none', ''
-			output += "{}\t{}\t{}\n".format(json.dumps(path), name, argstr)
+			output += "{}\t{}\t{}\n".format(path.encode('string-escape'), name, argstr)
 		return output
 
 	def load(self, data, overwrite=True):
@@ -76,7 +76,7 @@ class Manifest(object):
 			parts = list(parts) + [''] * max(3 - len(parts), 0) # pad to length 3 with ''
 			path, name, args = parts[:3]
 
-			path = json.loads(path)
+			path = path.decode('string-escape')
 
 			args = filter(None, args.split(','))
 			posargs, kwargs = [], {}
