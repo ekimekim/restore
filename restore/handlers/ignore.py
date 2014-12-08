@@ -1,4 +1,6 @@
 
+import os
+
 from restore.handler import Handler
 
 
@@ -20,7 +22,7 @@ class IgnoreHandler(Handler):
 	@classmethod
 	def match(cls, manifest, filepath):
 		if (any(filepath.endswith(ext) for ext in cls.MATCH_EXTENSIONS) or
-		    os.path.abspath(filepath) in MATCH_PATHS):
+		    os.path.abspath(filepath) in cls.MATCH_PATHS):
 			return (), {}
 
 	def restore(self):
