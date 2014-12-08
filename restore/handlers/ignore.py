@@ -6,6 +6,8 @@ class IgnoreHandler(Handler):
 	"""A handler that does not re-create the file, for temporary files and others you do not wish to save."""
 
 	name = 'ignore'
+	restores_contents = True
+
 	MATCH_EXTENSIONS = {'.pyc', '.swp'}
 
 	@classmethod
