@@ -8,11 +8,19 @@ class IgnoreHandler(Handler):
 	name = 'ignore'
 	restores_contents = True
 
+	# match on any file with these extensions
 	MATCH_EXTENSIONS = {'.pyc', '.swp'}
+	# match on these hard-coded paths which are places that 'temporary files' lie
+	MATCH_PATHS = {
+		'/dev', '/proc', '/sys',
+		'/tmp', '/run', '/var/tmp', '/var/run', '/var/lock',
+		'/var/cache',
+	}
 
 	@classmethod
 	def match(cls, manifest, filepath):
-		if any(filepath.endswith(ext) for ext in cls.MATCH_EXTENSIONS):
+		if (any(filepath.endswith(ext) for ext in cls.MATCH_EXTENSIONS) or
+		    os.path.abspath(filepath) in MATCH_PATHS):
 			return (), {}
 
 	def restore(self):
