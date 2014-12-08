@@ -27,7 +27,8 @@ class PackageHandler(Handler):
 		if cls.package_index is None:
 			cls.package_index = {} # by creating like this, the dict is cls specific,
 			                       # instead of shared between all subclasses of PackageHandler
-		if not cls.indexer:
+
+		if cls.indexer is None:
 			# start indexing
 			cls.indexer = gevent.spawn(cls.index_packages)
 
@@ -68,8 +69,8 @@ class PackageHandler(Handler):
 		if package:
 			return (package,), {}
 
-	def __init__(self, filepath, package):
-		super(PackageHandler, self).__init__(filepath)
+	def __init__(self, manifest, filepath, package):
+		super(PackageHandler, self).__init__(manifest, filepath)
 		self.package = package
 
 	def get_args(self):
