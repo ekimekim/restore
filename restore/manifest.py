@@ -34,11 +34,15 @@ class Manifest(object):
 	def add_file(self, path, handler=None, overwrite=True):
 		if self.absolute is None:
 			self.absolute = path.startswith('/')
+
+		path = os.path.realpath(path)
+		path = os.path.normpath(path)
+
 		if self.absolute:
 			path = os.path.abspath(path)
-		elif path.startswith('/'):
-			raise ValueError("Cannot add absolute path to relative path manifest")
-		path = os.path.normpath(path)
+		else:
+			path = os.path.relpath(path)
+
 		if overwrite or path not in self.files:
 			self.files[path] = handler
 
