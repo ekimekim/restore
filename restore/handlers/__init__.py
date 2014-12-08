@@ -2,6 +2,7 @@
 import basics
 import packages
 import example
+import ignore
 
 # first and last handlers that should always be in those positions to ensure proper operation
 # these cover things like restoring whole directories and fallback "just back up the file" stuff
@@ -17,5 +18,6 @@ LAST_HANDLERS = [
 
 _DEFAULT_HANDLERS = [
 	packages.PacmanHandler,
+	ignore.IgnoreHandler,
 ]
 DEFAULT_HANDLERS = FIRST_HANDLERS + _DEFAULT_HANDLERS + LAST_HANDLERS
