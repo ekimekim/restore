@@ -81,8 +81,8 @@ class Manifest(object):
 			args = filter(None, args.split(','))
 			posargs, kwargs = [], {}
 			for arg in args:
-				if '=' in args:
-					k, v = args.split('=', 1)
+				if '=' in arg:
+					k, v = arg.split('=', 1)
 					kwargs[k.strip()] = v.strip()
 				else:
 					posargs.append(arg.strip())
