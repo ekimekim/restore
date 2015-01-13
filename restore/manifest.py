@@ -1,8 +1,6 @@
 
 import os
 
-import simplejson as json
-
 from gevent.event import Event
 
 import gtools
@@ -26,6 +24,9 @@ class Manifest(object):
 
 	def add_file_tree(self, root):
 		"""Load files and folders recursively, if not already loaded"""
+		# os.walk doesn't handle trivial case of a non-directory
+		if not os.path.isdir(root):
+			self.add_file(root, overwrite=False)
 		for path, dirs, files in os.walk(root):
 			for filename in files:
 				self.add_file(os.path.join(path, filename), overwrite=False)
