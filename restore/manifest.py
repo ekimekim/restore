@@ -108,15 +108,25 @@ class Manifest(object):
 
 	def find_matches(self, handlers=DEFAULT_HANDLERS):
 		"""Search handler classes for matches for files.
-		Order in the handlers list determines priority."""
-		for path in sorted(self.files):
-			if self.files[path]: continue # only look for unhandled files
+		Order in the handlers list determines priority.
+		Parent directories are matched before children (to allow HandledByParent to work)
+		but otherwise matching is done in parallel"""
+		unmatched = [path for path, handler in self.files.items() if not handler]
+		ready = {path: Event() for path in unmatched}
+
+		def match_path(path):
+			parent = os.path.dirname(path)
+			if parent in ready:
+				ready[parent].wait()
 			for cls in handlers:
 				match = cls.match(self, path)
 				if not match: continue
 				args, kwargs = match
 				self.files[path] = cls(self, path, *args, **kwargs)
 				break
+			ready[path].set()
+
+		gtools.gmap(match_path, unmatched)
 
 	def restore(self, archive, path):
 		"""Restore target path from given archive. Note this assumes the path's dependencies are already
