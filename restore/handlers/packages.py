@@ -24,6 +24,7 @@ class PackageHandler(Handler):
 	@classmethod
 	def get_package(cls, filepath):
 		"""Looks up what package owns the given file. Returns package name or None on no match."""
+		filepath = os.path.abspath(filepath)
 		if cls.package_index is None:
 			cls.package_index = {} # by creating like this, the dict is cls specific,
 			                       # instead of shared between all subclasses of PackageHandler
