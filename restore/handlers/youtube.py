@@ -3,6 +3,8 @@ import os
 import string
 from uuid import uuid4
 
+import gevent.lock
+
 import easycmd
 
 from restore.handler import SavesFileInfo
@@ -30,6 +32,10 @@ class YoutubeHandler(SavesFileInfo):
 		'webm': 'webm',
 		'mkv': 'mkv',
 	}
+
+	# We don't allow more than this many downloads at a time
+	CONCURRENCY_LIMIT = 10
+	concurrency_limiter = gevent.lock.Semaphore(CONCURRENCY_LIMIT)
 
 	@classmethod
 	def splitname(cls, filepath):
@@ -146,5 +152,6 @@ class YoutubeHandler(SavesFileInfo):
 			pass # allow default format
 		else:
 			raise ValueError("Unknown file extension: {}".format(self.format))
-		self.youtube_dl(*args, exc=True)
+		with self.concurrency_limiter:
+			self.youtube_dl(*args, exc=True)
 		assert os.path.exists(filepath), "youtube-dl returned succesfully but file does not exist"
