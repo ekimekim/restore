@@ -155,6 +155,7 @@ class Manifest(object):
 			self.restore(archive, path)
 			restored[path].set()
 
+		self.check_cycles()
 		gtools.gmap(wait_and_restore, self.files)
 
 	def archive(self, fileobj, compress='gz'):
@@ -167,6 +168,23 @@ class Manifest(object):
 		archive = Archive(fileobj, 'w', compress=compress)
 		archive.add_manifest(self)
 
+	def check_cycles(self, path=None, chain=()):
+		"""Check for cycles originating from path, or all paths if path=None"""
+		if path is None:
+			for path in self.files:
+				self.check_cycles(path)
+			return
+
+		if path not in self.files:
+			return
+
+		if path in chain:
+			chain_text = " -> ".join(map(repr, chain + (path,)))
+			raise ValueError("Dependency cycle: {}".format(chain_text))
+
+		for dependency in self.files[path].get_depends():
+			dependency = os.path.normpath(dependency)
+			self.check_cycles(dependency, chain + (path,))
 
 class edit_manifest(object):
 	"""Helper context manager to load a manifest from disk, modify it, and save it if there's no errors.
