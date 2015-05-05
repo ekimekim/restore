@@ -75,6 +75,9 @@ class Handler(object):
 		Don't forget to include super()'s results too.
 		A handler will always depend on its parent directory.
 		"""
+		if self.filepath in ('.', '/'):
+			# special cases are their own "parent" according to dirname()
+			return set()
 		return {os.path.dirname(self.filepath)}
 
 	def restore(self, extra_data):
