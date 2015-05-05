@@ -139,7 +139,8 @@ class YoutubeHandler(SavesFileInfo):
 				self.download_to_path(tmp_path)
 				easycmd.cmd(['ffmpeg', '-y'] + time_args + ['-i', tmp_path, '-strict', '-2', self.filepath])
 			finally:
-				os.remove(tmp_path)
+				if os.path.exists(tmp_path):
+					os.remove(tmp_path)
 		super(YoutubeHandler, self).restore(extra_data)
 
 	def download_to_path(self, filepath):
