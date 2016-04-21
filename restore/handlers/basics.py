@@ -44,7 +44,7 @@ class BasicFileHandler(SavesFileInfo):
 		super(BasicFileHandler, self).restore(extra_data)
 
 
-class SymbolicLinkHandler(Handler):
+class SymbolicLinkHandler(SavesFileInfo):
 	"""Handler to re-create symbolic links"""
 
 	name = 'symbolic-link'
@@ -55,10 +55,13 @@ class SymbolicLinkHandler(Handler):
 			return (), {}
 
 	def get_extra_data(self):
-		return {'target': os.readlink(self.filepath)}
+		extra_data = super(SymbolicLinkHandler, self).get_extra_data()
+		extra_data['target'] = os.readlink(self.filepath)
+		return extra_data
 
 	def restore(self, extra_data):
 		os.symlink(extra_data['target'], self.filepath)
+		super(SymbolicLinkHandler, self).restore(extra_data)
 
 
 class HandledByParent(Handler):
