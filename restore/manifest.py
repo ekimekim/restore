@@ -22,27 +22,36 @@ class Manifest(object):
 		if filepath:
 			self.loadfile(filepath)
 
-	def add_file_tree(self, root):
+	def add_file_tree(self, root, follow_symlinks=True):
 		"""Load files and folders recursively, if not already loaded"""
 		# os.walk doesn't handle trivial case of a non-directory
 		if not os.path.isdir(root):
-			self.add_file(root, overwrite=False)
-		for path, dirs, files in os.walk(root):
+			self.add_file(root, overwrite=False, follow_symlinks=follow_symlinks)
+		for path, dirs, files in os.walk(root, followlinks=follow_symlinks):
 			for filename in files:
 				self.add_file(os.path.join(path, filename), overwrite=False)
-			self.add_file(path, overwrite=False)
+			self.add_file(path, overwrite=False, follow_symlinks=follow_symlinks)
 
-	def add_file(self, path, handler=None, overwrite=True):
+	def add_file(self, path, handler=None, overwrite=True, follow_symlinks=True):
+		"""Add path and associate with handler (if any).
+		If path already present and overwrite=False, do nothing.
+		If follow_symlinks=False, the link itself will be added.
+		If follow_symlinks=True, both the link and the path it points to will be added.
+		"""
 		if self.absolute is None:
 			self.absolute = path.startswith('/')
 
-		path = os.path.realpath(path)
 		path = os.path.normpath(path)
 
 		if self.absolute:
 			path = os.path.abspath(path)
 		else:
 			path = os.path.relpath(path)
+
+		if follow_symlinks and os.path.islink(path):
+			linked_path = os.path.join(path, os.readlink(path))
+			if os.path.exists(linked_path) or os.path.islink(linked_path):
+				self.add_file(linked_path)
 
 		if overwrite or path not in self.files:
 			self.files[path] = handler
