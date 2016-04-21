@@ -3,6 +3,7 @@ import gevent
 from gevent import subprocess
 from gevent.event import Event
 
+from easycmd import cmd
 from gtools import get_first
 
 from restore.handler import Handler
@@ -111,14 +112,13 @@ class PacmanHandler(PackageHandler):
 
 	@classmethod
 	def index_packages(cls):
-		data = subprocess.check_output(['pacman', '-Ql'])
+		data = cmd(['pacman', '-Ql'])
 		for line in data.strip().split('\n'):
 			package, filepath = line.split(' ', 1)
 			cls.set_package(filepath, package)
 
 	def check_package(self, package):
-		subprocess.check_call(['pacman', '-Qq', package])
+		cmd(['pacman', '-Qq', package])
 
 	def install_package(self, package):
-		subprocess.check_call(['pacman', '-Sy', '--noconfirm', package])
-
+		cmd(['pacman', '-Sy', '--noconfirm', package])
