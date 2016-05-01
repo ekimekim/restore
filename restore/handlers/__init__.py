@@ -2,6 +2,7 @@
 import basics
 import packages
 import example
+import git
 import ignore
 
 # first and last handlers that should always be in those positions to ensure proper operation
@@ -19,5 +20,8 @@ LAST_HANDLERS = [
 _DEFAULT_HANDLERS = [
 	packages.PacmanHandler,
 	ignore.IgnoreHandler,
+	git.GitContentHandler
+	git.GitCloneHandler,
+	git.GitBundleHandler,
 ]
 DEFAULT_HANDLERS = FIRST_HANDLERS + _DEFAULT_HANDLERS + LAST_HANDLERS
