@@ -21,9 +21,10 @@ class YoutubeHandler(SavesFileInfo):
 	# we map file extensions to args as understood by the --audio-format and --recode-video options
 	AUDIO_EXTENSIONS = {
 		'aac': 'aac',
-		'ogg': 'vorbis',
-		'mp3': 'mp3',
 		'm4a': 'm4a',
+		'mp3': 'mp3',
+		'ogg': 'vorbis',
+		'opus': 'opus',
 		'wav': 'wav',
 	}
 	VIDEO_EXTENSIONS = {
