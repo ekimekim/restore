@@ -13,22 +13,27 @@ def git(target, command, *args):
 	return cmd(['git', '-C', target, command] + list(args))
 
 
+_try_get_repo_cache = {}
 def try_get_repo(filepath):
 	"""For a path, try to find the repo path it is in.
 	Will return either:
 		(True, git dir) for a bare repository
 		(False, top level dir) for a non-bare repository
 		(None, None) if path is not part of a repo.
+	Caches results since this will commonly be called the same on all files in a directory
 	"""
-	try:
-		repo = os.path.abspath(git(filepath, 'rev-parse', '--show-top-level')[:-1]) # strip newline
-		if repo:
-			return False, repo
-		else: # bare repository
-			repo = os.path.abspath(git(filepath, 'rev-parse', '--git-dir')[:-1])
-			return True, repo
-	except FailedProcessError:
-		return None, None
+	if filepath not in _try_get_repo_cache:
+		try:
+			repo = os.path.abspath(git(filepath, 'rev-parse', '--show-top-level')[:-1]) # strip newline
+			if repo:
+				result = False, repo
+			else: # bare repository
+				repo = os.path.abspath(git(filepath, 'rev-parse', '--git-dir')[:-1])
+				result = True, repo
+		except FailedProcessError:
+			result = None, None
+		_try_get_repo_cache[filepath] = result
+	return _try_get_repo_cache[filepath]
 
 
 class GitContentHandler(Handler):
@@ -41,15 +46,16 @@ class GitContentHandler(Handler):
 
 	@classmethod
 	def match(cls, manifest, filepath):
-		# is file in a repo?
-		bare, repo = try_get_repo(filepath)
+		directory = filepath if os.path.isdir(filepath) else os.path.dirname(filepath)
+		# is file's directory in a repo?
+		bare, repo = try_get_repo(directory)
 		if repo is None:
 			return
 		# don't match the repo itself
 		if repo == filepath:
 			return
-		# is file in a git dir? or the work tree?
-		in_git_dir, in_work_tree = git(filepath, 'rev-parse',
+		# is file's directory in a git dir? or the work tree?
+		in_git_dir, in_work_tree = git(directory, 'rev-parse',
 			'--is-inside-git-dir',
 			'--is-inside-work-tree'
 		).strip().split('\n')
@@ -60,7 +66,7 @@ class GitContentHandler(Handler):
 		if in_work_tree != 'true':
 			return
 		# in work tree: check that it's tracked (ls-files is non-empty)
-		if git(filepath, 'ls-files', '--', filepath).strip():
+		if git(directory, 'ls-files', '--', filepath).strip():
 			return (repo,), {}
 
 	def __init__(self, manifest, filepath, repo):
