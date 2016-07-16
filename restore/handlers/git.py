@@ -52,6 +52,9 @@ class GitCloneHandler(SavesFileInfo):
 
 	@classmethod
 	def match(cls, manifest, filepath):
+		# is it a directory?
+		if not os.path.isdir(filepath):
+			return
 		# is it a repo?
 		bare, repo = try_get_repo(filepath)
 		if repo is None or repo != os.path.abspath(filepath):
@@ -116,6 +119,10 @@ class GitBundleHandler(SavesFileInfo):
 
 	@classmethod
 	def match(cls, manifest, filepath):
+		# is it a directory?
+		if not os.path.isdir(filepath):
+			return
+		# is it a repo?
 		bare, repo = try_get_repo(filepath)
 		if repo is None or repo != os.path.abspath(filepath):
 			return
