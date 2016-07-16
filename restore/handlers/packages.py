@@ -1,4 +1,6 @@
 
+import os
+
 import gevent
 from gevent import subprocess
 from gevent.event import Event
