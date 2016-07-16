@@ -21,9 +21,9 @@ def try_get_repo(filepath):
 		(None, None) if path is not part of a repo.
 	"""
 	try:
-		repo = os.path.abspath(git(filepath, 'rev-parse', '--show-top-level')[:-1]) # strip newline
+		repo = git(filepath, 'rev-parse', '--show-toplevel')[:-1] # strip newline
 		if repo:
-			return False, repo
+			return False, os.path.abspath(repo)
 		else: # bare repository
 			repo = os.path.abspath(git(filepath, 'rev-parse', '--git-dir')[:-1])
 			return True, repo
@@ -54,7 +54,7 @@ class GitCloneHandler(SavesFileInfo):
 	def match(cls, manifest, filepath):
 		# is it a repo?
 		bare, repo = try_get_repo(filepath)
-		if repo is None or repo != filepath:
+		if repo is None or repo != os.path.abspath(filepath):
 			return
 		# does it have a remote?
 		remotes = git(filepath, 'remote').strip().split('\n')
@@ -117,7 +117,7 @@ class GitBundleHandler(SavesFileInfo):
 	@classmethod
 	def match(cls, manifest, filepath):
 		bare, repo = try_get_repo(filepath)
-		if repo is None or repo != filepath:
+		if repo is None or repo != os.path.abspath(filepath):
 			return
 		return (), {'bare': bare}
 
