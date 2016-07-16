@@ -13,12 +13,13 @@ from restore.archive import Archive
 cli = argh.EntryPoint("restore")
 
 @cli
-def add(manifest, *path):
+@argh.arg('-L', '--follow-symlinks', help='Follow any symbolic links, instead of adding the links themselves')
+def add(manifest, follow_symlinks=False, *path):
 	"""Add files or folders to a manifest file, or create a new manifest if it doesn't exist"""
 	manifest_path = manifest
 	manifest = Manifest(manifest_path) if os.path.isfile(manifest_path) else Manifest()
 	for p in path:
-		manifest.add_file_tree(p)
+		manifest.add_file_tree(p, follow_symlinks=follow_symlinks)
 	manifest.savefile(manifest_path)
 
 @cli
