@@ -2,6 +2,7 @@
 import os
 import sys
 
+import escapes
 import argh
 
 from restore.manifest import Manifest, edit_manifest
@@ -49,8 +50,20 @@ def match(manifest, no_common=False, exclude='', *handlers):
 			handler = Handler.from_name(name)
 			if handler in handlers:
 				handlers.remove(handler)
+
+	def print_progress(done, total):
+		if not total:
+			return
+		sys.stdout.write('{}{}Matching...{} of {} complete ({:.2f}%){}'.format(
+			escapes.CLEAR_LINE, escapes.SAVE_CURSOR,
+			done, total, (100. * done)/total,
+			escapes.LOAD_CURSOR,
+		))
+		sys.stdout.flush()
+
 	with edit_manifest(manifest) as m:
-		m.find_matches(handlers)
+		m.find_matches(handlers, progress_callback=print_progress)
+	print # end the partial line left by print_progress
 
 @cli
 @argh.arg('--quiet', help='List names only, no descriptions')

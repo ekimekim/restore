@@ -2,6 +2,7 @@
 import os
 
 from gevent.event import Event
+from gevent.lock import Semaphore, RLock
 
 import gtools
 
@@ -115,27 +116,49 @@ class Manifest(object):
 		with open(filepath) as f:
 			self.load(f.read())
 
-	def find_matches(self, handlers=DEFAULT_HANDLERS):
+	def find_matches(self, handlers=DEFAULT_HANDLERS, progress_callback=None):
 		"""Search handler classes for matches for files.
 		Order in the handlers list determines priority.
 		Parent directories are matched before children (to allow HandledByParent to work)
-		but otherwise matching is done in parallel"""
+		but otherwise matching is done in parallel.
+		If given, progress_callback will be called some number of times,
+		with args (number finished, total). The final call will always be (total, total)"""
 		unmatched = [path for path, handler in self.files.items() if not handler]
 		ready = {path: Event() for path in unmatched}
+
+		if progress_callback is None:
+			progress_callback = lambda done, total: None
+
+		# a manifest might contain a huge number of files, we can't try to do everything at once
+		# or we will OOM/run out of fds/cause timeouts/etc.
+		# however, we need to be able to proceed with whichever is next in the dependency graph,
+		# so we can only limit concurrency after that check.
+		MAX_CONCURRENCY = 100
+		semaphore = Semaphore(MAX_CONCURRENCY)
+
+		done = [0] # putting a number inside a list allows us to assign to it from inside a closure
+		           # (since py2 doesn't have a nonlocal keyword)
+		callback_lock = RLock()
 
 		def match_path(path):
 			parent = os.path.dirname(path)
 			if parent in ready:
 				ready[parent].wait()
-			for cls in handlers:
-				match = cls.match(self, path)
-				if not match: continue
-				args, kwargs = match
-				self.files[path] = cls(self, path, *args, **kwargs)
-				break
+			with semaphore:
+				for cls in handlers:
+					match = cls.match(self, path)
+					if not match: continue
+					args, kwargs = match
+					self.files[path] = cls(self, path, *args, **kwargs)
+					break
 			ready[path].set()
+			done[0] += 1
+			with callback_lock:
+				progress_callback(done[0], len(unmatched))
 
+		progress_callback(0, len(unmatched))
 		gtools.gmap(match_path, unmatched)
+		progress_callback(len(unmatched), len(unmatched))
 
 	def restore(self, archive, path):
 		"""Restore target path from given archive. Note this assumes the path's dependencies are already
