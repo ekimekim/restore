@@ -4,7 +4,7 @@ import tempfile
 
 from easycmd import cmd, FailedProcessError
 
-from restore.handler import Handler, SavesFileInfo
+from restore.handler import SavesFileInfo
 
 
 def git(target, command, *args):
@@ -31,65 +31,6 @@ def try_get_repo(filepath):
 		return None, None
 
 
-class GitContentHandler(Handler):
-	"""Handler that matches any tracked files inside a git repo's working tree,
-	or inside a git repo's git dir.
-	Does nothing on restore - it assumes that once the repo is restored, all working tree
-	files will be checked out and all git_dir files restored."""
-
-	name = 'git-content'
-
-	@classmethod
-	def match(cls, manifest, filepath):
-		parent = os.path.dirname(filepath)
-		parent_handler = manifest.files.get(parent, None)
-
-		# we assume that for any directory which is in the git dir or working tree
-		# all its contents are also in the same area.
-		if isinstance(parent_handler, GitContentHandler):
-			repo = parent_handler.repo
-			is_work_tree = parent_handler.is_work_tree
-		else:
-			directory = filepath if os.path.isdir(filepath) else parent
-			# is file's directory in a repo?
-			bare, repo = try_get_repo(directory)
-			if repo is None:
-				return
-			# don't match the repo itself
-			if repo == filepath:
-				return
-			# is file's directory in a git dir? or the work tree?
-			is_git_dir, is_work_tree = git(directory, 'rev-parse',
-				'--is-inside-git-dir',
-				'--is-inside-work-tree'
-			).strip().split('\n')
-			# in git dir: match
-			if is_git_dir == 'true':
-				pass
-			# not in git dir or work tree: weird, don't match
-			elif is_work_tree != 'true':
-				return
-			# in work tree: check if it's not tracked (ls-files is empty)
-			elif not git(directory, 'ls-files', '--', filepath).strip():
-				return
-
-		return (repo,), {'is_work_tree': is_work_tree}
-
-	def __init__(self, manifest, filepath, repo, is_work_tree):
-		self.repo = repo
-		self.is_work_tree = is_work_tree
-		super(GitContentHandler, self).__init__(manifest, filepath)
-
-	def get_args(self):
-		return (self.repo,), {'is_work_tree': self.is_work_tree}
-
-	def get_depends(self):
-		return super(GitContentHandler, self).get_depends() | {self.repo}
-
-	def restore(self, extra_data):
-		pass
-
-
 class GitCloneHandler(SavesFileInfo):
 	"""A handler that matches git repositories that have at least one remote.
 	The restore action is to clone from that remote.
@@ -97,15 +38,17 @@ class GitCloneHandler(SavesFileInfo):
 	may not do the right thing:
 		* If you have commits that aren't pushed to the remote
 		* If you have uncommitted changes
+		* If you have untracked files
 		* If two repos list each other as a remote (dependency cycle)
 		* If you have multiple remotes, it may not clone from the one you intend.
 		* You will lose per-repository hooks and config! It is literally a re-clone.
 
 	This handler matches against the top level directory of the repo, or the git dir if bare.
-	The files inside the repo and git dir will be matched by GitContentHandler instead.
+	The files inside the repo and git dir will be HandledByParent.
 	"""
 
 	name = 'git-clone'
+	restores_contents = True
 
 	@classmethod
 	def match(cls, manifest, filepath):
@@ -165,10 +108,11 @@ class GitBundleHandler(SavesFileInfo):
 	It will not save any per-repo hooks or config (eg. remotes), it is similar to a re-clone.
 	
 	This handler matches against the top level directory of the repo, or the git dir if bare.
-	The files inside the repo and git dir will be matched by GitContentHandler instead.
+	The files inside the repo and git dir will be HandledByParent.
 	"""
 
 	name = 'git-bundle'
+	restores_contents = True
 
 	@classmethod
 	def match(cls, manifest, filepath):

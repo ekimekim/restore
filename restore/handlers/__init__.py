@@ -20,7 +20,6 @@ LAST_HANDLERS = [
 _DEFAULT_HANDLERS = [
 	packages.PacmanHandler,
 	ignore.IgnoreHandler,
-	git.GitContentHandler,
 	git.GitCloneHandler,
 	git.GitBundleHandler,
 ]
