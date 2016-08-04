@@ -2,7 +2,7 @@
 import os
 
 from gevent.event import Event
-from gevent.lock import Semaphore, RLock
+from gevent.lock import Semaphore, DummySemaphore, RLock
 
 import gtools
 
@@ -141,17 +141,7 @@ class Manifest(object):
 		callback_lock = RLock()
 
 		def match_path(path):
-			parent = os.path.dirname(path)
-			if parent in ready:
-				ready[parent].wait()
-			with semaphore:
-				for cls in handlers:
-					match = cls.match(self, path)
-					if not match: continue
-					args, kwargs = match
-					self.files[path] = cls(self, path, *args, **kwargs)
-					break
-			ready[path].set()
+			self.find_match(path, handlers, _ready=ready, _lock=semaphore)
 			done[0] += 1
 			with callback_lock:
 				progress_callback(done[0], len(unmatched))
@@ -159,6 +149,23 @@ class Manifest(object):
 		progress_callback(0, len(unmatched))
 		gtools.gmap(match_path, unmatched)
 		progress_callback(len(unmatched), len(unmatched))
+
+	def find_match(self, path, handlers=DEFAULT_HANDLERS, _ready=None, _lock=DummySemaphore()):
+		"""Find handler from given list which matches against path and set that handler for that path in manifest.
+		Other args are for internal use only (see find_matches)
+		"""
+		parent = os.path.dirname(path)
+		if _ready and parent in _ready:
+			_ready[parent].wait()
+		with _lock:
+			for cls in handlers:
+				match = cls.match(self, path)
+				if not match: continue
+				args, kwargs = match
+				self.files[path] = cls(self, path, *args, **kwargs)
+				break
+		if _ready:
+			_ready[path].set()
 
 	def restore(self, archive, path):
 		"""Restore target path from given archive. Note this assumes the path's dependencies are already
