@@ -36,7 +36,8 @@ def prune(manifest):
           help='Specific handler names to match on. If none given, the default list is used.')
 @argh.arg('--no-common', help='Disable the common handlers that provide basic default functionality')
 @argh.arg('--exclude', help='A comma-seperated list of handlers not to use')
-def match(manifest, no_common=False, exclude='', *handlers):
+@argh.arg('--overwrite', help='Ignore existing handlers and attempt to re-match everything')
+def match(manifest, no_common=False, exclude='', overwrite=False, *handlers):
 	"""Automatically find matching handlers for all unhandled files in manifest"""
 	try:
 		handlers = [Handler.from_name(name) for name in handlers]
@@ -62,7 +63,7 @@ def match(manifest, no_common=False, exclude='', *handlers):
 		sys.stdout.flush()
 
 	with edit_manifest(manifest) as m:
-		m.find_matches(handlers, progress_callback=print_progress)
+		m.find_matches(handlers, progress_callback=print_progress, overwrite=overwrite)
 	print # end the partial line left by print_progress
 
 @cli

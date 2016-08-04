@@ -116,14 +116,14 @@ class Manifest(object):
 		with open(filepath) as f:
 			self.load(f.read())
 
-	def find_matches(self, handlers=DEFAULT_HANDLERS, progress_callback=None):
+	def find_matches(self, handlers=DEFAULT_HANDLERS, progress_callback=None, overwrite=False):
 		"""Search handler classes for matches for files.
 		Order in the handlers list determines priority.
 		Parent directories are matched before children (to allow HandledByParent to work)
 		but otherwise matching is done in parallel.
 		If given, progress_callback will be called some number of times,
 		with args (number finished, total). The final call will always be (total, total)"""
-		unmatched = [path for path, handler in self.files.items() if not handler]
+		unmatched = [path for path, handler in self.files.items() if overwrite or not handler]
 		ready = {path: Event() for path in unmatched}
 
 		if progress_callback is None:

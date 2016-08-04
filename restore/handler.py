@@ -1,11 +1,12 @@
 
+import logging
 import os
 import pwd
 import grp
 import weakref
 from stat import S_IMODE
 
-from classtricks import get_all_subclasses
+from classtricks import get_all_subclasses, classproperty
 
 
 class Handler(object):
@@ -49,7 +50,12 @@ class Handler(object):
 		"""
 		return None
 
+	@classproperty
+	def logger(cls):
+		return logging.getLogger('restore.handlers').getChild(cls.__name__)
+
 	def __init__(self, manifest, filepath):
+		self.logger = self.logger.getChild(repr(filepath))
 		self.filepath = filepath
 		# we use a weakref for manifest to break the circular reference, and handlers shouldn't be
 		# called once the manifest object is dead anyway.
