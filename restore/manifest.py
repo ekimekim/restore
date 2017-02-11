@@ -23,7 +23,7 @@ class Manifest(object):
 		if filepath:
 			self.loadfile(filepath)
 
-	def add_file_tree(self, root, follow_symlinks=True):
+	def add_file_tree(self, root, follow_symlinks=False):
 		"""Load files and folders recursively, if not already loaded"""
 		# os.walk doesn't handle trivial case of a non-directory
 		if not os.path.isdir(root):
@@ -33,7 +33,7 @@ class Manifest(object):
 				self.add_file(os.path.join(path, filename), overwrite=False)
 			self.add_file(path, overwrite=False, follow_symlinks=follow_symlinks)
 
-	def add_file(self, path, handler=None, overwrite=True, follow_symlinks=True):
+	def add_file(self, path, handler=None, overwrite=True, follow_symlinks=False):
 		"""Add path and associate with handler (if any).
 		If path already present and overwrite=False, do nothing.
 		If follow_symlinks=False, the link itself will be added.
