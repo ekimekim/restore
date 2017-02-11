@@ -66,7 +66,7 @@ class GitCloneHandler(SavesFileInfo):
 		if repo is None or repo != os.path.abspath(filepath):
 			return
 		# does it have a remote?
-		remotes = git(filepath, 'remote').strip().split('\n')
+		remotes = filter(None, git(filepath, 'remote').split('\n'))
 		if not remotes:
 			return
 		# multiple remotes: prefer 'origin' by default, otherwise pick first one
