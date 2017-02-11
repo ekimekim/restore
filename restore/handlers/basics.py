@@ -79,5 +79,5 @@ class HandledByParent(Handler):
 		if parent_handler and getattr(parent_handler, 'restores_contents', False):
 			return (), {}
 
-	def restore(self):
+	def restore(self, extra_data):
 		pass
