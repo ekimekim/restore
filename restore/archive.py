@@ -46,8 +46,14 @@ class Archive(object):
 	# --- common methods ---
 
 	def archive_path(self, path):
-		"""Returns the location in the tar archive of the given path"""
-		return "data/{}".format(path.lstrip('/'))
+		"""Returns the location in the tar archive of the given path.
+		Paths are stored under data/ and in addition all filenames with a leading '_'
+		have another '_' prepended. This frees the space of /^_[^_].*/ for extra data files.
+		"""
+		path = path.lstrip('/')
+		path = '/'.join('_{}'.format(part) if part.startswith('_') else part
+		                for part in path.split('/'))
+		return "data/{}".format(path)
 
 	def close(self):
 		self.tar.close()
@@ -82,9 +88,12 @@ class Archive(object):
 		for name in self.get_names():
 			if os.path.dirname(name) != path:
 				continue
-			if not self.tar.getmember(name).isfile():
-				continue
 			key = os.path.basename(name)
+			if not key.startswith('_'):
+				continue
+			if not self.tar.getmember(name).isfile():
+				raise ValueError("Bad archive: extra data key {!r} under {!r} is not a file".format(key, path))
+			key = key[1:] # strip leading '_'
 			data[key] = self.read(name)
 		return data
 
@@ -142,9 +151,11 @@ class Archive(object):
 
 	def add_extra_data(self, path, data):
 		"""Add given data under the path for the given filepath"""
-		path = self.archive_path(path)
+		archive_path = self.archive_path(path)
 		for key, value in data.items():
-			self.write(os.path.join(path, key), value)
+			if key.startswith('_'):
+				raise ValueError("Handler offered illegal key {!r} for path {!r}".format(key, path))
+			self.write(os.path.join(archive_path, '_{}'.format(key)), value)
 
 	def add_manifest(self, manifest):
 		"""Add given manifest and all its contents."""
