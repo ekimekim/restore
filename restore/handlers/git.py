@@ -19,16 +19,22 @@ def try_get_repo(filepath):
 		(True, git dir) for a bare repository
 		(False, top level dir) for a non-bare repository
 		(None, None) if path is not part of a repo.
+	For performance sake, we make the following assumptions:
+		* Any bare repo will be called "*.git"
+		* Any non-bare repo will contain a ".git" directory
 	"""
-	try:
-		repo = git(filepath, 'rev-parse', '--show-toplevel')[:-1] # strip newline
-		if repo:
-			return False, os.path.abspath(repo)
-		else: # bare repository
-			repo = os.path.abspath(git(filepath, 'rev-parse', '--git-dir')[:-1])
-			return True, repo
-	except FailedProcessError:
-		return None, None
+	# Shortcuts to avoid needing to run git in most cases
+	if filepath.endswith('.git') or os.path.isdir(os.path.join(filepath, '.git')):
+		try:
+			repo = git(filepath, 'rev-parse', '--show-toplevel')[:-1] # strip newline
+			if repo:
+				return False, os.path.abspath(repo)
+			else: # bare repository
+				repo = os.path.abspath(git(filepath, 'rev-parse', '--git-dir')[:-1])
+				return True, repo
+		except FailedProcessError:
+			pass
+	return None, None
 
 
 class GitCloneHandler(SavesFileInfo):
