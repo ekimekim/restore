@@ -101,10 +101,13 @@ def archive(manifest, archive, compress='gz'):
 	If archive path is '-', output to stdout.
 	"""
 	manifest = Manifest(manifest)
-	fileobj = sys.stdout if archive == '-' else open(archive, 'w')
 	if compress == 'none':
 		compress = None
-	manifest.archive(fileobj, compress=compress)
+	if archive == '-':
+		manifest.archive(sys.stdout, compress=compress)
+	else:
+		with open(archive, 'w') as f:
+			manifest.archive(f, compress=compress)
 
 if __name__ == '__main__':
 	cli()

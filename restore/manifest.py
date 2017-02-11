@@ -204,8 +204,8 @@ class Manifest(object):
 		"""
 		# late import breaks cyclic dependency
 		from archive import Archive
-		archive = Archive(fileobj, 'w', compress=compress)
-		archive.add_manifest(self)
+		with Archive(fileobj, 'w', compress=compress) as archive:
+			archive.add_manifest(self)
 
 	def check_cycles(self, path=None, chain=()):
 		"""Check for cycles originating from path, or all paths if path=None"""
@@ -224,6 +224,7 @@ class Manifest(object):
 		for dependency in self.files[path].get_depends():
 			dependency = os.path.normpath(dependency)
 			self.check_cycles(dependency, chain + (path,))
+
 
 class edit_manifest(object):
 	"""Helper context manager to load a manifest from disk, modify it, and save it if there's no errors.

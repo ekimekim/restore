@@ -17,6 +17,7 @@ class Archive(object):
 	A file object need not be seekable when writing.
 	Archives are gzip-compressed by default. Pass compress='bz2' to use bzip, or None to disable.
 	When reading, compression is auto-detected.
+	Can be used as a context manager, closing on exit, similar to a file object.
 	"""
 	# cache for the listing of files in the archive
 	# in the read case, cache means no need to re-read every time
@@ -47,6 +48,15 @@ class Archive(object):
 	def archive_path(self, path):
 		"""Returns the location in the tar archive of the given path"""
 		return "data/{}".format(path.lstrip('/'))
+
+	def close(self):
+		self.tar.close()
+
+	def __enter__(self):
+		return self
+
+	def __exit__(self, *exc_info):
+		self.close()
 
 	# --- read methods ---
 
