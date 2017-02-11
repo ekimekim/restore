@@ -141,14 +141,15 @@ class GitBundleHandler(SavesFileInfo):
 	def get_args(self):
 		return (), {'bare': self.bare}
 
-	def get_extra_info(self):
-		extra_info = super(GitBundleHandler, self).get_extra_info()
-		extra_info['bundle'] = git(self.filepath, 'bundle', 'create', '-', '--all')
+	def get_extra_data(self):
+		extra_data = super(GitBundleHandler, self).get_extra_data()
+		extra_data['bundle'] = git(self.filepath, 'bundle', 'create', '-', '--all')
+		return extra_data
 
-	def restore(self, extra_info):
+	def restore(self, extra_data):
 		# There seems to be no way to git clone from a bundle on stdin, so we use a tempfile
 		with tempfile.NamedTemporaryFile() as f:
-			f.write(extra_info['bundle'])
+			f.write(extra_data['bundle'])
 			f.flush()
 			cmd(['git', 'clone', '-o', 'bundle', f.name, self.filepath])
-		super(GitBundleHandler, self).restore(extra_info)
+		super(GitBundleHandler, self).restore(extra_data)
