@@ -148,6 +148,8 @@ class Archive(object):
 
 	def add_manifest(self, manifest):
 		"""Add given manifest and all its contents."""
+		if None in manifest.files.values():
+			raise ValueError("Cannot create archive for manifest: Contains unmatched paths")
 		self.write('manifest', manifest.dump())
 		for path, handler in manifest.files.items():
 			data = handler.get_extra_data()
