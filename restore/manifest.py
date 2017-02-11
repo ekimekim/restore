@@ -133,7 +133,7 @@ class Manifest(object):
 		# or we will OOM/run out of fds/cause timeouts/etc.
 		# however, we need to be able to proceed with whichever is next in the dependency graph,
 		# so we can only limit concurrency after that check.
-		MAX_CONCURRENCY = 100
+		MAX_CONCURRENCY = int(os.environ.get('MATCH_CONCURRENCY_MAX', 100))
 		semaphore = Semaphore(MAX_CONCURRENCY)
 
 		done = [0] # putting a number inside a list allows us to assign to it from inside a closure
