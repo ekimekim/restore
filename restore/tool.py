@@ -37,7 +37,9 @@ def prune(manifest):
 @argh.arg('--no-common', help='Disable the common handlers that provide basic default functionality')
 @argh.arg('--exclude', help='A comma-seperated list of handlers not to use')
 @argh.arg('--overwrite', help='Ignore existing handlers and attempt to re-match everything')
-def match(manifest, no_common=False, exclude='', overwrite=False, *handlers):
+@argh.arg('-L', '--follow-symlinks', help='Follow any symbolic links, instead of adding the links themselves')
+@argh.arg('--add', help="Extra paths to add while matching. Paths added while matching will not add subpaths if they would be handled by a matched parent path.")
+def match(manifest, no_common=False, exclude='', overwrite=False, follow_symlinks=False, add=None, *handlers):
 	"""Automatically find matching handlers for all unhandled files in manifest"""
 	try:
 		handlers = [Handler.from_name(name) for name in handlers]
@@ -63,7 +65,7 @@ def match(manifest, no_common=False, exclude='', overwrite=False, *handlers):
 		sys.stdout.flush()
 
 	with edit_manifest(manifest) as m:
-		m.find_matches(handlers, progress_callback=print_progress, overwrite=overwrite)
+		m.find_matches(handlers, progress_callback=print_progress, overwrite=overwrite, add_root=add, follow_symlinks=follow_symlinks)
 	print # end the partial line left by print_progress
 
 @cli

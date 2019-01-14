@@ -3,6 +3,8 @@ import os
 
 from gevent.event import Event
 from gevent.lock import Semaphore, DummySemaphore, RLock
+from gevent.pool import Group
+import gevent
 
 import gtools
 
@@ -38,6 +40,7 @@ class Manifest(object):
 		If path already present and overwrite=False, do nothing.
 		If follow_symlinks=False, the link itself will be added.
 		If follow_symlinks=True, both the link and the path it points to will be added.
+		Returns added paths.
 		"""
 		if self.absolute is None:
 			self.absolute = path.startswith('/')
@@ -49,13 +52,18 @@ class Manifest(object):
 		else:
 			path = os.path.relpath(path)
 
+		ret = []
+
 		if follow_symlinks and os.path.islink(path):
 			linked_path = os.path.join(path, os.readlink(path))
 			if os.path.exists(linked_path) or os.path.islink(linked_path):
-				self.add_file(linked_path)
+				ret += self.add_file(linked_path, overwrite=False, follow_symlinks=follow_symlinks)
 
 		if overwrite or path not in self.files:
 			self.files[path] = handler
+			ret.append(path)
+
+		return ret
 
 	def dump(self):
 		"""Returns the string data representing the on-disk format.
@@ -116,14 +124,25 @@ class Manifest(object):
 		with open(filepath) as f:
 			self.load(f.read())
 
-	def find_matches(self, handlers=DEFAULT_HANDLERS, progress_callback=None, overwrite=False):
-		"""Search handler classes for matches for files.
+	def find_matches(self,
+		handlers=DEFAULT_HANDLERS,
+		progress_callback=None,
+		overwrite=False,
+		add_root=None,
+		follow_symlinks=False,
+	):
+		"""Search handler classes for matches for files that already exist in manifest,
+		as well as given root path recurively (if given).
 		Order in the handlers list determines priority.
 		Parent directories are matched before children (to allow HandledByParent to work)
 		but otherwise matching is done in parallel.
+		Children are not added if they would be HandledByParent.
 		If given, progress_callback will be called some number of times,
-		with args (number finished, total). The final call will always be (total, total)"""
+		with args (number finished, total). The final call will always be (total, total).
+		Total may rise as files are added."""
 		unmatched = [path for path, handler in self.files.items() if overwrite or not handler]
+		unadded = [] if add_root is None or os.path.normpath(add_root) in self.files else [os.path.normpath(add_root)]
+		unmatched += unadded
 		ready = {path: Event() for path in unmatched}
 
 		if progress_callback is None:
@@ -140,14 +159,38 @@ class Manifest(object):
 		           # (since py2 doesn't have a nonlocal keyword)
 		callback_lock = RLock()
 
+		pool = Group()
+
 		def match_path(path):
+			added_paths = []
+			if path in unadded:
+				unadded.remove(path)
+				added_paths = self.add_file(path, follow_symlinks=follow_symlinks, overwrite=False)
 			self.find_match(path, handlers, _ready=ready, _lock=semaphore)
+			for added_path in added_paths:
+				if path in self.files and self.files[path].restores_contents:
+					continue # don't add subpaths of path that restores contents
+				if not os.path.isdir(path):
+					continue
+				for filename in os.listdir(path):
+					sub_path = os.path.normpath(os.path.join(path, filename))
+					# add new path if it doesn't already exist
+					if sub_path not in self.files and sub_path not in unadded:
+						unmatched.append(sub_path)
+						unadded.append(sub_path)
+						ready[sub_path] = Event()
+						pool.spawn(match_path, sub_path)
 			done[0] += 1
 			with callback_lock:
 				progress_callback(done[0], len(unmatched))
 
 		progress_callback(0, len(unmatched))
-		gtools.gmap(match_path, unmatched)
+		for path in unmatched:
+			pool.spawn(match_path, path)
+		unready = [e for e in ready.values() if not e.ready()]
+		while unready:
+			gevent.wait(unready)
+			unready = [e for e in ready.values() if not e.ready()]
 		progress_callback(len(unmatched), len(unmatched))
 
 	def find_match(self, path, handlers=DEFAULT_HANDLERS, _ready=None, _lock=DummySemaphore()):
@@ -191,6 +234,15 @@ class Manifest(object):
 				dependency = os.path.normpath(dependency)
 				if dependency in restored:
 					restored[dependency].wait()
+				else:
+					# try to find a parent that we do know of, and depend on that instead,
+					# assuming it will provide the child.
+					dependency_parent = dependency
+					while dependency_parent not in ['/', '.']:
+						dependency_parent = os.path.dirname(dependency_parent)
+						if dependency_parent in restored:
+							restored[dependency_parent].wait()
+							break
 			self.restore(archive, path)
 			restored[path].set()
 

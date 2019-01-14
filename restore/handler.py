@@ -29,6 +29,7 @@ class Handler(object):
 	"""
 
 	name = NotImplemented
+	restores_contents = False
 
 	@classmethod
 	def from_name(cls, name):
