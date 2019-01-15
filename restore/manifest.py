@@ -127,6 +127,7 @@ class Manifest(object):
 	def find_matches(self,
 		handlers=DEFAULT_HANDLERS,
 		progress_callback=None,
+		confirm_callback=None,
 		overwrite=False,
 		add_root=None,
 		follow_symlinks=False,
@@ -139,6 +140,11 @@ class Manifest(object):
 		Children are not added if they would be HandledByParent.
 		If given, progress_callback will be called some number of times,
 		with args (number finished, total). The final call will always be (total, total).
+		Calls will not overlap.
+		If given, confirm_callback will be called for each match, with args (path, matched handler).
+		It should return either the same handler or a new one. The intent is to let a user interactively
+		confirm a handler before moving on.
+		Calls to confirm callback may overlap (called from different greenlets).
 		Total may rise as files are added."""
 		unmatched = [path for path, handler in self.files.items() if overwrite or not handler]
 		unadded = [] if add_root is None or os.path.normpath(add_root) in self.files else [os.path.normpath(add_root)]
@@ -166,7 +172,7 @@ class Manifest(object):
 			if path in unadded:
 				unadded.remove(path)
 				added_paths = self.add_file(path, follow_symlinks=follow_symlinks, overwrite=False)
-			self.find_match(path, handlers, _ready=ready, _lock=semaphore)
+			self.find_match(path, handlers, _ready=ready, _lock=semaphore, _confirm_callback=confirm_callback)
 			for added_path in added_paths:
 				if path in self.files and self.files[path].restores_contents:
 					continue # don't add subpaths of path that restores contents
@@ -193,7 +199,7 @@ class Manifest(object):
 			unready = [e for e in ready.values() if not e.ready()]
 		progress_callback(len(unmatched), len(unmatched))
 
-	def find_match(self, path, handlers=DEFAULT_HANDLERS, _ready=None, _lock=DummySemaphore()):
+	def find_match(self, path, handlers=DEFAULT_HANDLERS, _ready=None, _lock=DummySemaphore(), _confirm_callback=None):
 		"""Find handler from given list which matches against path and set that handler for that path in manifest.
 		Other args are for internal use only (see find_matches)
 		"""
@@ -205,7 +211,10 @@ class Manifest(object):
 				match = cls.match(self, path)
 				if not match: continue
 				args, kwargs = match
-				self.files[path] = cls(self, path, *args, **kwargs)
+				handler = cls(self, path, *args, **kwargs)
+				if _confirm_callback:
+					handler = _confirm_callback(path, handler)
+				self.files[path] = handler
 				break
 		if _ready:
 			_ready[path].set()

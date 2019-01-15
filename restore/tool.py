@@ -1,13 +1,18 @@
 
 import os
 import sys
+import traceback
 
+import gevent.event
+import gevent.lock
 import escapes
 import argh
+import lineedit
 
 from restore.manifest import Manifest, edit_manifest
 from restore.handlers import _DEFAULT_HANDLERS, FIRST_HANDLERS, LAST_HANDLERS
 from restore.handler import Handler
+from restore.handlers.ignore import IgnoreHandler
 from restore.archive import Archive
 
 
@@ -54,18 +59,85 @@ def match(manifest, no_common=False, exclude='', overwrite=False, follow_symlink
 			if handler in handlers:
 				handlers.remove(handler)
 
-	def print_progress(done, total):
-		if not total:
-			return
-		sys.stdout.write('{}{}Matching...{} of {} complete ({:.2f}%){}'.format(
-			escapes.CLEAR_LINE, escapes.SAVE_CURSOR,
-			done, total, (100. * done)/total,
-			escapes.LOAD_CURSOR,
-		))
+	state = {"done": 0, "total": 0}
+	state_changed = gevent.event.Event()
+	output_lock = gevent.lock.RLock()
+	auto_confirm_prefixes = []
+	editor = lineedit.LineEditing(input_fn=lineedit.gevent_read_fn)
+
+	def output(s):
+		sys.stdout.write(escapes.CLEAR_LINE + escapes.SAVE_CURSOR + s + escapes.LOAD_CURSOR)
 		sys.stdout.flush()
 
+	def set_progress(done, total):
+		state['done'] = done
+		state['total'] = total
+		state_changed.set()
+
+	def print_progress():
+		while True:
+			state_changed.wait()
+			with output_lock:
+				state_changed.clear()
+				_print_progress()
+
+	def _print_progress():
+		done = state['done']
+		total = state['total']
+		if not total:
+			return
+		output('Matching...{} of {} complete ({:.2f}%)'.format(
+			done, total, (100. * done)/total,
+		))
+
+	def confirm(path, handler):
+		if any(path.startswith(prefix) for prefix in auto_confirm_prefixes):
+			return handler
+		with output_lock:
+			# leave a visible progress update
+			_print_progress()
+			print
+			args, kwargs = handler.get_args()
+			argstr = ", ".join(map(str, args) + ["{}={}".format(k, v) for k, v in kwargs.items()])
+			while True:
+				output('{}: {} {}\n(Confirm, Edit, confirm all Recursively, Ignore)'.format(
+					path, handler.name, argstr,
+				))
+				c = editor.read()
+				if c == 'c':
+					return handler
+				elif c == 'r':
+					auto_confirm_prefixes.append(path)
+					return handler
+				elif c == 'i':
+					return IgnoreHandler(m, path)
+				elif c == 'e':
+					line = editor.readline()
+					name, args = line.split(' ', 1) if ' ' in line else line, ''
+					# TODO don't just copy-paste this from manifest load code, reuse it
+					args = filter(None, args.split(','))
+					posargs, kwargs = [], {}
+					for arg in args:
+						if '=' in arg:
+							k, v = arg.split('=', 1)
+							kwargs[k.strip()] = v.strip()
+						else:
+							posargs.append(arg.strip())
+					if name == 'none' or not name:
+						handler = None
+					else:
+						try:
+							handler = Handler.from_name(name)(m, path, *posargs, **kwargs)
+						except Exception:
+							traceback.print_exc()
+							continue # retry
+					return handler
+
+	gevent.spawn(print_progress)
+
 	with edit_manifest(manifest) as m:
-		m.find_matches(handlers, progress_callback=print_progress, overwrite=overwrite, add_root=add, follow_symlinks=follow_symlinks)
+		with editor:
+			m.find_matches(handlers, progress_callback=set_progress, overwrite=overwrite, add_root=add, follow_symlinks=follow_symlinks, confirm_callback=confirm)
 	print # end the partial line left by print_progress
 
 @cli
