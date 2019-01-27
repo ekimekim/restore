@@ -9,7 +9,7 @@ import escapes
 import argh
 import lineedit
 
-from restore.manifest import Manifest, edit_manifest
+from restore.manifest import Manifest, edit_manifest, StopMatching
 from restore.handlers import _DEFAULT_HANDLERS, FIRST_HANDLERS, LAST_HANDLERS
 from restore.handler import Handler
 from restore.handlers.ignore import IgnoreHandler
@@ -100,7 +100,7 @@ def match(manifest, no_common=False, exclude='', overwrite=False, follow_symlink
 			args, kwargs = handler.get_args()
 			argstr = ", ".join(map(str, args) + ["{}={}".format(k, v) for k, v in kwargs.items()])
 			while True:
-				output('{}: {} {}\n(Confirm, Edit, confirm all Recursively, Ignore)'.format(
+				output('{}: {} {}\n(Confirm, Edit, confirm all Recursively, Ignore, Quit)'.format(
 					path, handler.name, argstr,
 				))
 				c = editor.read()
@@ -111,6 +111,8 @@ def match(manifest, no_common=False, exclude='', overwrite=False, follow_symlink
 					return handler
 				elif c == 'i':
 					return IgnoreHandler(m, path)
+				elif c == 'q':
+					raise StopMatching
 				elif c == 'e':
 					line = editor.readline()
 					name, args = line.split(' ', 1) if ' ' in line else line, ''

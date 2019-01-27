@@ -12,6 +12,11 @@ from handler import Handler
 from handlers import DEFAULT_HANDLERS
 
 
+class StopMatching(Exception):
+	"""Raise in a match confirmation callback to gracefully stop all matching
+	and return."""
+
+
 class Manifest(object):
 	"""A Manifest contains the list of files and their associated handlers.
 	Manifests can contain absolute or relative paths, but not both.
@@ -178,7 +183,7 @@ class Manifest(object):
 					continue # don't add subpaths of path that restores contents
 				if not os.path.isdir(path):
 					continue
-				for filename in os.listdir(path):
+				for filename in sorted(os.listdir(path)):
 					sub_path = os.path.normpath(os.path.join(path, filename))
 					# add new path if it doesn't already exist
 					if sub_path not in self.files and sub_path not in unadded:
@@ -194,9 +199,14 @@ class Manifest(object):
 		for path in unmatched:
 			pool.spawn(match_path, path)
 		unready = [e for e in ready.values() if not e.ready()]
-		while unready:
-			gevent.wait(unready)
-			unready = [e for e in ready.values() if not e.ready()]
+		try:
+			while unready:
+				ready = gevent.wait(unready, count=1)
+				for g in ready:
+					g.get() # re-raise if failed
+				unready = [e for e in ready.values() if not e.ready()]
+		except StopMatching:
+			pass
 		progress_callback(len(unmatched), len(unmatched))
 
 	def find_match(self, path, handlers=DEFAULT_HANDLERS, _ready=None, _lock=DummySemaphore(), _confirm_callback=None):
