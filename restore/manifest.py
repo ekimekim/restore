@@ -2,7 +2,7 @@
 import os
 
 from gevent.event import Event
-from gevent.lock import Semaphore, DummySemaphore, RLock
+from gevent.lock import Semaphore, RLock
 from gevent.pool import Group
 import gevent
 
@@ -151,10 +151,10 @@ class Manifest(object):
 		confirm a handler before moving on.
 		Calls to confirm callback may overlap (called from different greenlets).
 		Total may rise as files are added."""
+		# TODO rewrite this entire thing better, with less implicit state and weird flow.
 		unmatched = [path for path, handler in self.files.items() if overwrite or not handler]
 		unadded = [] if add_root is None or os.path.normpath(add_root) in self.files else [os.path.normpath(add_root)]
 		unmatched += unadded
-		ready = {path: Event() for path in unmatched}
 
 		if progress_callback is None:
 			progress_callback = lambda done, total: None
@@ -177,11 +177,15 @@ class Manifest(object):
 			if path in unadded:
 				unadded.remove(path)
 				added_paths = self.add_file(path, follow_symlinks=follow_symlinks, overwrite=False)
-			self.find_match(path, handlers, _ready=ready, _lock=semaphore, _confirm_callback=confirm_callback)
+			parent = os.path.dirname(path)
+			if parent in ready:
+				ready[parent].join()
+			with semaphore:
+				self.find_match(path, handlers, _confirm_callback=confirm_callback)
 			for added_path in added_paths:
 				if path in self.files and self.files[path].restores_contents:
 					continue # don't add subpaths of path that restores contents
-				if not os.path.isdir(path):
+				if os.path.islink(path) or not os.path.isdir(path):
 					continue
 				for filename in sorted(os.listdir(path)):
 					sub_path = os.path.normpath(os.path.join(path, filename))
@@ -189,45 +193,39 @@ class Manifest(object):
 					if sub_path not in self.files and sub_path not in unadded:
 						unmatched.append(sub_path)
 						unadded.append(sub_path)
-						ready[sub_path] = Event()
-						pool.spawn(match_path, sub_path)
+						ready[sub_path] = pool.spawn(match_path, sub_path)
 			done[0] += 1
+			# ideally we shouldn't be blocking our dependencies while waiting to display
 			with callback_lock:
 				progress_callback(done[0], len(unmatched))
 
 		progress_callback(0, len(unmatched))
 		for path in unmatched:
-			pool.spawn(match_path, path)
-		unready = [e for e in ready.values() if not e.ready()]
+			ready = {path: pool.spawn(match_path, path) for path in unmatched}
+		unready = [g for g in ready.values() if not g.ready()]
 		try:
 			while unready:
-				ready = gevent.wait(unready, count=1)
-				for g in ready:
+				finished = gevent.wait(unready, count=1)
+				for g in finished:
 					g.get() # re-raise if failed
-				unready = [e for e in ready.values() if not e.ready()]
+				unready = [g for g in ready.values() if not g.ready()]
 		except StopMatching:
 			pass
 		progress_callback(len(unmatched), len(unmatched))
 
-	def find_match(self, path, handlers=DEFAULT_HANDLERS, _ready=None, _lock=DummySemaphore(), _confirm_callback=None):
+	def find_match(self, path, handlers=DEFAULT_HANDLERS, _confirm_callback=None):
 		"""Find handler from given list which matches against path and set that handler for that path in manifest.
 		Other args are for internal use only (see find_matches)
 		"""
-		parent = os.path.dirname(path)
-		if _ready and parent in _ready:
-			_ready[parent].wait()
-		with _lock:
-			for cls in handlers:
-				match = cls.match(self, path)
-				if not match: continue
-				args, kwargs = match
-				handler = cls(self, path, *args, **kwargs)
-				if _confirm_callback:
-					handler = _confirm_callback(path, handler)
-				self.files[path] = handler
-				break
-		if _ready:
-			_ready[path].set()
+		for cls in handlers:
+			match = cls.match(self, path)
+			if not match: continue
+			args, kwargs = match
+			handler = cls(self, path, *args, **kwargs)
+			if _confirm_callback:
+				handler = _confirm_callback(path, handler)
+			self.files[path] = handler
+			break
 
 	def restore(self, archive, path):
 		"""Restore target path from given archive. Note this assumes the path's dependencies are already
@@ -305,11 +303,14 @@ class edit_manifest(object):
 	This context manager is re-usable but NOT re-enterant.
 	"""
 
-	def __init__(self, filepath):
+	def __init__(self, filepath, allow_create=False):
 		self.filepath = filepath
 
 	def __enter__(self):
-		self.manifest = Manifest(self.filepath)
+		if os.path.exists(self.filepath):
+			self.manifest = Manifest(self.filepath)
+		else:
+			self.manifest = Manifest()
 		return self.manifest
 
 	def __exit__(self, *exc_info):
